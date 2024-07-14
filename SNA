@@ -1,0 +1,324 @@
+###Part 1 ###
+ibrary(tidygraph)
+library(tidyverse)
+
+library(ggraph)
+library(showtext)
+showtext_auto()
+
+node_list<-read.csv("/Users/paullam/winner_node_list.csv")
+node_list
+
+edge_list<- read.csv("/Users/paullam/winner_edge_list.csv")
+edge_list
+
+df= edge_list[-(493:1460),]
+
+
+edge_list<- df
+
+names<- edge_list %>%
+  distinct(Name)%>%
+  rename(label = Name)
+
+organizations<- edge_list %>%
+  distinct(Organization)%>%
+  rename(label = Organization)
+
+#node list 
+
+nodes <- full_join(names, organizations, by = "label")
+nodes
+
+nodes <- rowid_to_column(nodes, "id")
+nodes
+
+#Edge list
+
+per_route <- edge_list %>%  
+  group_by(Name, Organization) %>%
+  summarise(weight = n(), .groups = "drop")
+per_route
+
+edges <- per_route %>% 
+  left_join(nodes, by = c("Name" = "label")) %>% 
+  rename(from = id)
+
+edges <- edges %>% 
+  left_join(nodes, by = c("Organization" = "label")) %>% 
+  rename(to = id)
+
+edges <- select(edges, from, to, weight)
+edges
+
+#Creating network objects
+
+
+
+library(network)
+
+legco_network <- network(edges,
+                          vertex.attr = nodes,
+                          matrix.type = "edgelist",
+                          ignore.eval = FALSE)
+
+class(legco_network)
+
+
+summary(legco_network)
+
+plot(legco_network, vertex.cex = 3)
+
+plot(legco_network, vertex.cex = 3, mode = "circle")
+
+
+#igraph
+
+library(igraph) 
+
+routes_igraph <- graph_from_data_frame(d = edges,
+                                       vertices = nodes,
+                                       directed = TRUE)
+routes_igraph
+
+plot(routes_igraph,
+     vertex.size = 30,
+     vertex.label.cex = 0.5,
+     edge.arrow.size = 0.8)
+
+#tidyverse
+
+library(tidygraph)
+library(ggraph)
+
+legco <- tbl_graph(nodes = nodes,
+                         edges = edges,
+                         directed = TRUE)
+
+legco_tidy <- as_tbl_graph(routes_igraph)
+
+class(legco_tidy)
+class(legco)
+class(routes_igraph)
+
+
+#step for calculations
+legco_tidy
+
+legco_tidy %>% 
+  activate(edges) %>% 
+  arrange(desc(weight))
+
+
+
+closeness(edges)
+
+Degree_Centrality<- degree(legco_tidy) 
+
+data.frame(Degree_Centrality)
+
+
+library(dplyr)
+
+
+Degree_Centrality_list <-cbind(nodes, Degree_Centrality)
+
+library("writexl")
+
+write_xlsx(Degree_Centrality_list,"/Users/paullam/Degree_Centrality.xlsx")
+
+
+betweenness_centrality<- betweenness(legco_tidy)
+
+betweenness_centrality_list<- data.frame(betweenness_centrality)
+
+
+write_xlsx(betweenness_centrality_list,"/Users/paullam/Betweenness_Centrality_list.xlsx")
+
+
+betweenness (legco_tidy)
+eigen_centrality(legco_tidy)$vector
+
+eigenvector_centrality<- eigen_centrality(legco_tidy)$vector
+
+eigenvector_centrality_list<- data.frame(eigenvector_centrality)
+eigenvector_centrality_with_name <-cbind(nodes, eigenvector_centrality_list)
+
+
+write_xlsx(eigenvector_centrality_with_name,"/Users/paullam/eigenvector_centrality_list.xlsx")
+
+
+betweenness_data<-betweenness(legco_tidy, directed = FALSE)
+betweenness_list<- data.frame(betweenness_data)
+betweenness_list_with_name <-cbind(nodes, betweenness_list)
+
+library()
+
+
+closeness_data<-closeness(legco_tidy, normalized = T)
+closeness_list<- data.frame(closeness_data)
+closeness_list_with_name <-cbind(nodes, closeness_list)
+write_xlsx(closeness_list_with_name,"/Users/paullam/closeness_list_with_name.xlsx")
+
+list.vertex.attributes(legco)
+list.edge.attributes(legco) 
+
+V(legco)$label[1:331]
+
+V(ig_year1_111)$indegree   <- degree(ig_year1_111, mode = "in")
+V(ig_year1_111)$outdegree  <- degree(ig_year1_111, mode = "out")
+V(ig_year1_111)$closeness  <- closeness(ig_year1_111, mode = "total")
+V(ig_year1_111)$betweeness <- betweenness(ig_year1_111, normalized = TRUE)
+
+table_stat<- list(legco_tidy)
+
+V(legco_tidy)$indegree   <- degree(legco_tidy, mode = "in")
+V(legco_tidy)$outdegree  <- degree(legco_tidy, mode = "out")
+V(legco_tidy)$closeness  <- closeness(legco_tidy, mode = "total")
+V(legco_tidy)$betweeness <- betweenness(legco_tidy, normalized = TRUE)
+
+stats <- as_data_frame(legco_tidy, what = "vertices")
+
+
+write_xlsx(stats,"/Users/paullam/legco_list.xlsx")
+
+stat_pt2<- cbind(
+  size    = vcount(legco_tidy),
+  nedges  = ecount(legco_tidy),
+  density = edge_density(legco_tidy),
+  recip   = reciprocity(legco_tidy),
+  centr   = centr_betw(legco_tidy)$centralization,
+  pathLen = mean_distance(legco_tidy)
+)
+
+max_cliques(legco_tidy,min = 2)
+
+cluster_louvain(legco_tidy)
+
+#visualization
+
+library(visNetwork)
+visNetwork(nodes, edges)
+edges <- mutate(edges, width = weight/5 + 1)
+
+visNetwork(nodes, edges) %>% 
+  visIgraphLayout(layout = "layout_with_fr") %>% 
+  visEdges(arrows = "middle")
+legco_tidy
+
+legco_tidy %>% 
+  mutate(degree = centrality_degree(mode = "in")) %>%
+  ggraph(layout = "fr") +
+  geom_edge_fan(alpha = 0.25) +
+  geom_node_point(aes(size = degree,color = degree)) +
+  geom_node_text(aes(size = degree,label = label),
+                 repel = T,show.legend = F) +
+  scale_color_continuous(guide = "legend") +
+  theme_graph() + labs(title = "Winner's group",
+                       subtitle = "Based on Degree Centrality")
+
+
+legco_tidy %>% 
+  mutate(closeness = centrality_closeness()) %>%
+  ggraph(layout = "nicely") +
+  geom_edge_fan(alpha = 0.25) +
+  geom_node_point(aes(size = closeness,color = closeness)) +
+  geom_node_text(aes(size = closeness, label = label),
+                 repel = T, show.legend = F) +
+  scale_color_continuous(guide = "legend") +
+  theme_graph() + labs(title = "Winner's group",
+                       subtitle = "Based on Closeness Centrality")
+
+legco_tidy %>% 
+  mutate(betweenness = centrality_betweenness()) %>%
+  ggraph(layout = "kk") +
+  geom_edge_fan(alpha = 0.25) +
+  geom_node_point(aes(size = betweenness,color = betweenness)) +
+  geom_node_text(aes(size = betweenness, label = label),
+                 repel = T, show.legend = F) +
+  scale_color_continuous(guide = "legend") +
+  theme_graph() + labs(title = "Winner's group", 
+                       subtitle = "Based on Betweenness Centrality")
+
+
+####Part 2
+edge_list<- read.csv("/Users/paullam/winner_edge_list.csv")
+edge_list
+
+library(igraph)
+
+library(showtext)
+showtext_auto()
+
+class(edge_list)
+
+as.matrix(edge_list)
+
+legco_group<- graph.edgelist(as.matrix(edge_list[,2:1]), directed = FALSE)
+
+legco_group
+
+V(legco_group)$type <- V(legco_group)$name %in% edge_list[,2]
+
+legco_group
+
+V(legco_group)$type 
+
+V(legco_group)$name
+
+#bipartite network
+bp<- bipartite.projection(legco_group)
+bp
+
+
+actor1 <- bp$proj1
+actor1
+V(actor1)$name
+plot(actor1)
+
+actor2 <- bp$proj2
+actor2
+V(actor2)$name
+plot(actor2)
+
+
+
+#correspondence analysis
+library(MASS)
+
+library(igraph)
+
+
+tab<- table(edge_list[, 2:1])
+df<- as.data.frame.matrix(tab)
+bpmat<- as.matrix(df)
+ca<- corresp(bpmat, nf = 2)
+biplot(ca)
+
+###certrality 
+
+deg.actor<- degree(actor1)
+deg.actor<- setNames(deg.actor, V(actor1)$name)
+sort(deg.actor, decreasing =TRUE)
+list(deg.actor)
+hist(deg.actor)
+
+
+bet.actor<- betweenness(actor1)
+bet.actor<- setNames(bet.actor, V(actor1)$name)
+sort(bet.actor, decreasing =TRUE)
+list(bet.actor)
+hist(bet.actor)
+
+clo.actor<- closeness(actor2)
+clo.actor<- setNames(clo.actor, V(actor2)$name)
+sort(clo.actor, decreasing =TRUE)
+list(clo.actor)
+hist(clo.actor)
+
+
+ev.actor<- evcent(actor1)$vector
+ev.actor<- setNames(ev.actor, V(actor1)$name)
+sort(ev.actor, decreasing =TRUE)
+list(ev.actor)
+hist(ev.actor)
