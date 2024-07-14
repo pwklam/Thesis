@@ -1,0 +1,96 @@
+library(car)
+legco_legit<- read.csv("/Users/paullam/regression_1113.csv")
+
+head(legco_legit)
+
+mylogit1<- glm(winner ~ bj.group.affiliation, data = legco_legit, family = "binomial")
+summary(mylogit1)
+
+vif(mylogit1)
+
+
+mylogit2<- glm(winner ~ bj.group.affiliation+professional.group+local.businness.group+
+                 offical.group+ngo+cppcc+political.party, data = legco_legit, family = "binomial")
+vif(mylogit2)
+summary(mylogit2)
+
+
+mylogit3<- glm(winner ~ bj.group.affiliation+professional.group+local.businness.group+
+                 offical.group+ngo+cppcc+political.party+
+                 counter..movement.group+hta+local.pro.bj.youth.gorup+
+                 GTB.group+local.pro.bj.pressure.group+ bj.think.tank
+               ,data = legco_legit, family = "binomial")
+
+
+
+
+
+summary(mylogit3)
+vif(mylogit3)
+
+
+mylogit4<- glm(winner ~ 
+                 counter..movement.group+hta+local.pro.bj.youth.gorup+
+                 GTB.group+local.pro.bj.pressure.group+ bj.think.tank
+               ,data = legco_legit, family = "binomial")
+summary(mylogit4)
+
+
+vif(mylogit2)
+
+
+
+regression_output
+
+library(stargazer)
+
+stargazer(mylogit1, mylogit2, mylogit3, mylogit4, type="html", out="/Users/paullam/regress.htm")
+
+
+legco_legit<- read.csv("/Users/paullam/new.regression.csv")
+
+
+stargazer(mylogit1, mylogit2, mylogit3,vif_legco,
+title = "Group affiliation among winners and losers in 2021 legislative election",
+dep.var.labels = "Winners and losers in election",
+covariate.labels=c("CCP-satellite groups",
+"Local professional groups",
+"Local Business Group",
+"Governmental committees",
+"NGOs",
+"Legislative Bodies",
+"Political Parties",
+"Countermovement groups",
+"Hometown associations",
+"Youth groups",
+"Greater Bay area related groups",
+"Pressure groups",
+"Think Tanks"),
+notes.label = "Significance Levels",
+type = "text",
+out="/Users/paullam/pro.bj.group.regress.htm")
+
+stargazer(legco_vif, 
+          title = "Variance Inflation Factor (VIF)",
+          covariate.labels=c("CCP-satellite groups",
+                             "Local professional groups",
+                             "Local Business Group",
+                             "Governmental committees",
+                             "NGOs",
+                             "Legislative Bodies",
+                             "Political Parties",
+                             "Countermovement groups",
+                             "Hometown associations",
+                             "Youth groups",
+                             "Greater Bay area related groups",
+                             "Pressure groups",
+                             "Think Tanks"),
+          type="html", out="/Users/paullam/correlation.htm")
+
+
+legco_vif<- data.frame(vif(mylogit3))
+
+legco-vif<-data.frame(vif_legco)
+
+
+write.table(legco_vif, file = "/Users/paullam/legco_vif.txt", row.names= F, sep = ",")
